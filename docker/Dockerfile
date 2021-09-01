@@ -2,7 +2,7 @@ FROM osgeo/gdal:latest
 MAINTAINER jlinick@mit.edu
 
 # Set the working directory
-ENV WORKDIR=/products
+ENV WORKDIR=/workdir
 WORKDIR ${WORKDIR}
 ENV HOME=${WORKDIR}
 
@@ -39,5 +39,4 @@ RUN pip3 install hyp3_sdk
 # copy current repo
 COPY ./ /hyp3_timeseries
 
-# color in terminal (not working)
-ENV PS1='\[\e]0;\u@\h: \w\a\]${debian_chroot:+($debian_chroot)}\[\033[1;32m\]\u@\e[01;31m\h\[\033[00m\]\e[m:\[\033[01;34m\]\w\[\033[00m\]\$'
+RUN echo "PS1='🐳 \e[1;32m\]\u@\e[m\]\e[1;31m\]\h\e[m\]:\e[1;34m\]\w\e[m\]\\$ '" >> ~/.bashrc
