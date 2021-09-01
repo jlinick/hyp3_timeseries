@@ -4,6 +4,8 @@
 
 import os
 import re
+import sys
+import subprocess
 import fiona
 import numpy as np
 from osgeo import gdal
@@ -14,16 +16,15 @@ import matplotlib.pyplot as plt
 from scipy.optimize import minimize
 from skimage.exposure import match_histograms
 
-
 INFOLDER='/products/warped'
 OUTFOLDER='/products/matched'
-RANGE=[.5,99.5] # percentile range to scale output images
+RANGE=[.5,98] # percentile range to scale output images
 #S1_REGEX='S1.*warped.tif'
 IN_REGEX=r'^S1[AB].*?_([0-9]{8}).*.warped.vrt$' # for dates
 N=2 # how much to bin the images (N,N)
-
-
-
+script_dir = os.path.dirname(os.path.realpath(sys.argv[0]))
+SHAPEFILE=os.path.join(script_dir, 'shapefiles/subset.shp')
+WATER_MASK= os.path.join(script_dir, 'shapefiles/Mask_Antarctica_v02.tif')
 
 #OUTPUT_DIR = '/output'
 REMOVE='.temp'#'.merged'
@@ -38,15 +39,19 @@ def main():
     #stack = np.ma.dstack([load_binned(fil) for fil in files]) # use binned if sizes are over RAM/swap
     #stack = np.ma.dstack([load_gdal(fil) for fil in files])
     # get the mean of the stack
-    #med = np.ma.mean(stack, axis=2) 
-    med = efficient_mean(files)
+    #med = np.ma.mean(stack, axis=2)
+    water_mask = get_water_mask(files)
+    print('water mask size: {}'.format(water_mask.shape))
+    med = efficient_mean(files, water_mask)
 
     #del stack # clear the binned stack from memory
     pmin, pmax = np.percentile(med, RANGE) # get values of percentiles
     print('min: {}, max: {}'.format(pmin, pmax)) 
+    #pmin=0.
+    #pmax=0.67
     if not os.path.exists(OUTFOLDER):
         os.makedirs(OUTFOLDER)
-    #save(med, os.path.join(OUTFOLDER, 'median.png'), (pmin,pmax)) # save the median binned image
+    save(med, os.path.join(OUTFOLDER, 'median.png'), (pmin,pmax)) # save the median binned image
     #save_gdal(med, os.path.join(OUTFOLDER, 'median.tif')) # save the median binned image
     
     # load overview (map legend, north arrow, shapefiles, etc)
@@ -59,23 +64,41 @@ def main():
     print('applying corrections and saving files...')
     base = np.full_like(med, fill_value=pmin)
     fil_dict = sort_into_dict(files)
-    print('fil_dict is of type: {}'.format(fil_dict))
     for date in sorted(fil_dict.keys()):
         fils = fil_dict.get(date)
-        base = apply_histogram_matching(fils, med, (pmin,pmax), overview=overview, base=base, date=date)
+        base = apply_scaling(fils, med, (pmin,pmax), overview=overview, base=base, date=date)
 
-    #for fil in files:
-        ##med = apply_histogram_matching(fil, med, (pmin,pmax))
-        #base = apply_histogram_matching(fil, med, (pmin,pmax), overview=overview, base=base)
+def get_water_mask(files):
+    # get bounds of image
+    cmd = ' '.join([os.path.join(script_dir, 'get_bounds.sh'), SHAPEFILE])
+    print(cmd)
+    bounds = subprocess.check_output(cmd, shell=True).strip().decode('ascii')
+    print('image bounds: {}'.format(bounds))
+    # crop mask to proper bounds
+    output_file = os.path.join(script_dir, 'shapefiles', 'mask.crop.tif') 
+    if not os.path.exists(output_file):
+        cmd = 'gdalwarp -te {} -of GTiff -t_srs EPSG:3031 -r near -multi {} {}'.format(bounds, WATER_MASK, output_file)
+        os.system(cmd)
+    print(cmd)
+    water_mask = load_gdal(output_file)
+    land_only = np.ma.masked_less(water_mask, 255)
+    return match_size(land_only.mask, load_gdal(files[0]))
 
-def apply_histogram_matching(fil_paths, med, minmax, overview=None, base=None, date=None):
-    '''apply the histogram matching and save the file'''
+def match_size(arrayA, arrayB):
+    '''matches the size of arrayA to arrayB'''
+    im = Image.fromarray(arrayA)
+    return np.array(im.resize((arrayB.shape[1], arrayB.shape[0]), resample=0))
+
+def apply_scaling(fil_paths, med, minmax, overview=None, base=None, date=None):
+    '''apply image scaling and save the file'''
     pmin,pmax = minmax
     arrays = []
-    for fil_path in fil_paths:
+    for fil_path in fil_paths: # these are multiple files all on the same date
         arr = load_gdal(fil_path)
         med.mask = arr.mask # ensure the histogram comparisons are over the same data
-        matched = np.ma.array(match_histograms(arr, med))
+        #matched = np.ma.array(match_histograms(arr, med)) # THIS DOES DYNAMIC HISTOGRAM MATCHING
+        #matched = np.ma.array(linear_correction(arr, med)) # THIS DOES A LINEAR SCALING + OFFSET
+        matched = np.ma.array(gamma_correction(arr, med)) # THIS DOES A GAMMA SCALING
         matched.mask = arr.mask # ensure the mask stays the same
         arrays.append(matched)
     # combine the matched arrays
@@ -91,15 +114,50 @@ def apply_histogram_matching(fil_paths, med, minmax, overview=None, base=None, d
     #med = np.ma.array(np.ma.filled(arr, fill_value=med)) # we're going to update the median with the current image
     return (base - pmin)*0.98 + pmin
 
+def linear_correction(array, med):
+    '''apply a linear correction to the array by minimizing the residuals between array and med, using a linear scaling + offset'''
+    m,b = determine_coefficients(array, med)
+    return m * array + b
 
-def efficient_mean(files):
+def determine_linear_coefficients(arr, med):
+    '''returns the scaling m,b for mx+b that minimizes the residuals between arr and med'''
+    def residual(vec):
+        m,b = vec
+        #return np.absolute(m*arr-b - med).sum() L1 norm
+        return np.square(m*arr-b - med).sum()
+    return minimize(residual, np.array([1.,0.]), bounds=[(0.,2.),(-2.,2.)], method='Nelder-Mead').x
+
+def gamma_correction(array, med):
+    A,g = determine_gamma_coefficients(array, med)
+    print('gamma coefficients: A={}, gamma={}'.format(A,g))
+    return A * np.power(array, g)
+
+def determine_gamma_coefficients(arr, med):
+    '''returns the scaling m,b for mx+b that minimizes the residuals between arr and med'''
+    def residual(vec):
+        A,g = vec
+        #return np.absolute(m*arr-b - med).sum() L1 norm
+        return np.absolute(A*np.power(arr,g) - med).sum()
+    return minimize(residual, np.array([1.,1.]), bounds=[(0.,2.),(0.,2.)], method='Nelder-Mead').x
+
+def efficient_mean(files, water_mask):
     '''iterate through files to limit RAM usage'''
-    mean = np.zeros_like(load_gdal(files[0]))
-    for fil in files:
-        print('loading {} into stack...'.format(fil))
-        mean = mean + load_gdal(fil)
-    mean = mean / float(len(files))
-    return mean
+    mean = np.ma.array(np.zeros_like(load_gdal(files[0])))
+    count = np.zeros(shape=mean.shape).astype('uint16')
+    wminv = np.invert(water_mask).astype('float')
+    print('calculating mean over {} files...'.format(len(files)))
+    for i, fil in enumerate(files):
+        array = load_gdal(fil)
+        array = np.ma.masked_where(water_mask, array)# apply water mask
+        array.filled(0)
+        print('loading {}/{} {} into stack...'.format(i, len(files), os.path.basename(fil)))
+        mean = mean.data + array.data * wminv
+        count = count + array.mask.astype('uint16')#array.count(axis=2)
+        #print('current count mean: {}'.format(np.mean(count)))
+    full_mean = mean.astype('float') / count.astype('float')
+    mean_mask = np.invert(count.astype(bool)) # set mask to where there are no observations
+    full_mean = np.ma.array(full_mean, mask=mean_mask)
+    return full_mean
 
 def get_corrections(stack, med):
     '''determine the proper correction coefficients over the given stack, compared to the stack's mean
@@ -134,15 +192,6 @@ def combine(arrays):
     combined = np.ma.mean(stack, axis=2)
     return combined
 
-
-def determine_coefficients(arr, med):
-    '''returns the scaling m,b for mx+b that minimizes the residuals between arr and med'''
-    def residual(vec):
-        m,b = vec
-        #return np.absolute(m*arr-b - med).sum() L1 norm
-        return np.square(m*arr-b - med).sum()
-    return minimize(residual, np.array([1.,0.]), bounds=[(0.,2.),(-2.,2.)], method='Nelder-Mead').x
-
 def scale(arr, clim):
     '''returns the scaled array from clim (min,max) bounds to 1-255 integer array (since we use 0 as mask)'''
     return ((arr-clim[0])/abs(clim[1]-clim[0])*254 + 1).astype(int)
@@ -155,6 +204,7 @@ def save_gdal(arr, filename):
     dst_ds = None # close raster
 
 def load_gdal(filename):
+    print('loading {}'.format(filename))
     ds = gdal.Open(filename)
     myarray = np.ma.masked_less_equal(np.ma.array(ds.GetRasterBand(1).ReadAsArray()),0)
     return myarray
