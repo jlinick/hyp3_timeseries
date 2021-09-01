@@ -7,6 +7,7 @@ import os
 import re
 import argparse
 import numpy as np
+from tqdm import tqdm
 from datetime import datetime as dt
 from datetime import timedelta
 import matplotlib.pyplot as plt
@@ -30,17 +31,18 @@ class timelapse():
 
     def build(self):
         '''generate the timelapse'''
+        print('generating timelapse...')
         self.fils = self.get_input_files()
-        for i, fil in enumerate(self.fils):
+        for i, fil in enumerate(tqdm(self.fils)):
             inpath = os.path.join(INFOLDER, fil)
             outpath = os.path.join(OUTFOLDER, 's1-{:05d}.png'.format(i))
-            print(inpath, outpath)
             shutil.copy(inpath, outpath)
 
         # generate mp4 from images
-        cmd = 'ffmpeg -y -r 20 -i "{}/s1-%05d.png" -crf 22 -preset slow -c:a ac3 -vf "scale=3840:-1" {}/s1-backscatter_timeseries.mp4'.format(OUTFOLDER,OUTFOLDER)
+        print('saving to s1-backscatter_timeseries.mp4...')
+        cmd = 'ffmpeg -y -r 20 -i "{}/s1-%05d.png" -crf 22 -preset slow -c:a ac3 -vf "scale=3840:-1" /products/s1-backscatter_timeseries.mp4 > /dev/null'.format(OUTFOLDER,OUTFOLDER)
         os.system(cmd)
-        print(cmd)
+        #print(cmd)
 
     def combine_date(self, date):
         '''combine files for the given date and save the output'''

@@ -8,4 +8,9 @@ ${SCRIPT_DIR}/project_and_crop.sh
 ${SCRIPT_DIR}/mean_and_match.py
 ${SCRIPT_DIR}/generate_timelapse.py
 
+#rm -rf /products/matched
+#rm -rf /products/timelapse
+#rm -rf /products/corrected
+#rm -rf /products/warped
+
 echo "finished!"

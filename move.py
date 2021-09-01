@@ -6,6 +6,7 @@ import os
 import re
 import shutil
 import track
+from tqdm import tqdm
 
 S1_REGEX='^S1.*_([a-zA-Z0-9]{4}).+?$'
 TIFF_REGEX= '^S1.*_HH.tif$'
@@ -37,14 +38,15 @@ class group:
     def copy_tiffs(self):
         '''finds all the local files'''
         local_files = [f for f in os.listdir(self.inpath) if re.match(S1_REGEX, f) and not f.endswith('.zip')]
-        for fil in local_files:
+        print('generating virtual files...')
+        for fil in tqdm(local_files):
             fdir = os.path.join(self.inpath, fil)
             if not os.path.isdir(fdir):
                 return
             # determine which file to copy and the proper name
             basename = self.get_original_name(fil).replace('.SAFE', '')
             if not self.t.is_valid_name(basename):
-                print('{} is not in the query... skipping!'.format(basename))
+                #print('{} is not in the query... skipping!'.format(basename))
                 continue
             tiff_fn = self.get_tiff_filename(fdir)
             outfname = '{}.corrected.vrt'.format(basename)
@@ -53,8 +55,8 @@ class group:
             #if not os.path.exists(topath):
             #    print('copying {} to {}'.format(frompath, topath))
             #    shutil.copy(frompath, topath)
-            print('building {}'.format(outfname))
-            cmd = 'gdalbuildvrt -resolution highest {} {}'.format(topath, frompath)
+            #print('building {}'.format(outfname))
+            cmd = 'gdalbuildvrt -resolution highest {} {} > /dev/null'.format(topath, frompath)
             os.system(cmd)
 
 if __name__ == '__main__':

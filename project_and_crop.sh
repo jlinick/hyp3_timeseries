@@ -8,7 +8,7 @@ CORRECTED_REGEX="*.corrected.vrt"
 WARPED_PATH='/products/warped'
 #SHAPEFILE="${SCRIPT_DIR}/shapefiles/test.shp"
 SHAPEFILE="${SCRIPT_DIR}/shapefiles/subset.shp"
-RESOLUTION=90
+RESOLUTION=30
 PROJECTION="EPSG:3031"
 
 mkdir -p "${WARPED_PATH}"
@@ -18,12 +18,13 @@ mkdir -p "${WARPED_PATH}"
 BOUNDS=$(${SCRIPT_DIR}/get_bounds.sh ${SHAPEFILE})
 
 files=$(find "${CORRECTED_PATH}" -name "${CORRECTED_REGEX}" -printf '%p ' | sort -u)
+echo "generating projected and cropped virtual files..."
 for file in ${files}; do
     filebase="$(basename ${file} | sed 's/.corrected.tif//g')"
     warped_filename="${filebase}.warped.vrt"
     warped_filepath="${WARPED_PATH}/${warped_filename}"
     #convert them to 3031, generate a vrt with alpha layer, and merge all files together
     #gdalwarp -cutline ${SHAPEFILE} -crop_to_cutline -overwrite -of VRT -novshiftgrid -tr ${RESOLUTION} ${RESOLUTION} -t_srs ${PROJECTION} -r near -multi -of GTiff "${file}" "${warped_filepath}"
-    gdalwarp -te ${BOUNDS} -overwrite -of VRT -tr ${RESOLUTION} ${RESOLUTION} -t_srs ${PROJECTION} -r near -multi "${file}" "${warped_filepath}"
+    gdalwarp -te ${BOUNDS} -overwrite -of VRT -tr ${RESOLUTION} ${RESOLUTION} -t_srs ${PROJECTION} -r near -multi "${file}" "${warped_filepath}" > /dev/null
     #out_filename="${filebase}.
 done
