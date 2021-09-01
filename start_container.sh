@@ -15,9 +15,9 @@ DOCKER_CODE_DIR='/hyp3_timeseries'
 
 build_dockerfile() {
     cd "${SCRIPT_DIR}"
-    if [[ "$(docker images -q tops:latest 2> /dev/null)" == "" ]]; then
+    if [[ "$(docker images -q hyp3_timeseries:latest 2> /dev/null)" == "" ]]; then
         echo "hyp3_timeseries docker image does not exist, building..."
-        docker build -t "hyp3_timeseries:latest" -f "docker/Dockerfile" .
+	docker build -t "hyp3_timeseries:latest" -f "${SCRIPT_DIR}/docker/Dockerfile" .	
     else
         echo "hyp3_timeseries dockerfile exists."
     fi
