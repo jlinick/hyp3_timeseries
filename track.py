@@ -44,11 +44,12 @@ class track:
     def query_asf(self):
 
         #'&intersectsWith=point(-107.07 -75.52)' \
+        #'&intersectsWith=polygon((-103.670842344576 -74.4177148534973,-106.231146758566 -76.8020969230241,-114.223083850336 -76.0681200296965,-110.706357839052 -73.8378293132052,-103.670842344576 -74.4177148534973))' \
         query = 'https://api.daac.asf.alaska.edu/services/search/param?' \
                 'platform=S1&polarization=HH' \
                 '&processingLevel=SLC' \
                 '&relativeOrbit=7' \
-                '&intersectsWith=polygon((-103.670842344576 -74.4177148534973,-106.231146758566 -76.8020969230241,-114.223083850336 -76.0681200296965,-110.706357839052 -73.8378293132052,-103.670842344576 -74.4177148534973))' \
+                '&intersectsWith=point(-106.2082 -75.3699)' \
                 '&start=2015-01-01T00:00:00' \
                 '&end=2020-09-01T00:00:00' \
                 '&output=json'

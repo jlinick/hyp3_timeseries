@@ -19,7 +19,7 @@ from skimage.exposure import match_histograms
 INFOLDER='/products/warped'
 OUTFOLDER='/products/matched'
 RANGE=[.5,99.5] # percentile range to scale output images
-OVERVIEW_PATH='/hyp3_timeseries/shapefiles/overview.png'
+OVERVIEW_PATH='/hyp3_timeseries/shapefiles/overview_zoom.png'
 IN_REGEX=r'^S1[AB].*?_([0-9]{8}).*.warped.vrt$' # for dates
 BLACKLIST_DATES = ['2016-01-17', '2016-07-30', '2016-10-07', '2016-10-13', '2018-01-03'] # custom list for dates with poor/bad data
 #N=2 # how much to bin the images (N,N)
@@ -108,7 +108,7 @@ def get_corrections(stack, med):
     return coeff
 
 def save(arr, filename, clim, date=None, overview=None):
-    x,y=arr.shape
+    y,x=arr.shape
     dpi=300
     figsize=(x/dpi, y/dpi)
     fig, ax = plt.subplots(figsize=figsize)
