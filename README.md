@@ -5,7 +5,7 @@ This package is a Sentinel-1 data retrieval and timeseries generation using the 
 
 ### Running
 
-Once everything is set up, all you should need to do is run `./start_container.sh` (which will build the dockerfile if needed and jump you into it) and then the command `run`
+Once everything is set up, all you should need to do is run `./start_container.sh` (which will build the dockerfile if needed and jump you into it) and then the command `/hyp3_timeseries/run.sh`
 
 This will generate several folders:
 * RTC: holds the raw, radiometrically & terrain corrected SLC products

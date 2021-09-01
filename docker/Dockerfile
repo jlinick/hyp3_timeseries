@@ -39,8 +39,5 @@ RUN pip3 install hyp3_sdk
 # copy current repo
 COPY ./ /hyp3_timeseries
 
-# alias to run the script
-ENV run='/hyp3_timeseries/run.sh'
-
-# color in terminal
+# color in terminal (not working)
 ENV PS1='\[\e]0;\u@\h: \w\a\]${debian_chroot:+($debian_chroot)}\[\033[1;32m\]\u@\e[01;31m\h\[\033[00m\]\e[m:\[\033[01;34m\]\w\[\033[00m\]\$'
