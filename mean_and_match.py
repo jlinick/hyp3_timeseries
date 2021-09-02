@@ -8,13 +8,14 @@ import fiona
 import numpy as np
 from osgeo import gdal
 from PIL import Image
+import dateutil
 from tqdm import tqdm
 from datetime import datetime as dt
 from skimage.measure import block_reduce
 import matplotlib.pyplot as plt
 from scipy.optimize import minimize
 from skimage.exposure import match_histograms
-
+import iceutils as ice
 
 INFOLDER='/products/warped'
 OUTFOLDER='/products/matched'
@@ -54,6 +55,18 @@ def main():
     if os.path.exists(OVERVIEW_PATH):
         overview = plt.imread(OVERVIEW_PATH)
 
+    # load the stress/strain stack
+    stack = ice.Stack('/products/vm.h5')
+    data = stack._datasets['data']
+    cmap = ice.get_cmap('viridis')
+    stackdatedict = {}
+    for i, d in enumerate(stack.tdec):
+        datestr = ice.tdec2datestr(d)
+        date_obj = dateutil.parser.parse(datestr)
+        stackdatedict[date_obj] = i
+
+
+
     # apply the histogram normalization to each image
     print('applying corrections and saving files...')
     base = np.full_like(load_gdal(files[0]), fill_value=pmin)
@@ -64,10 +77,13 @@ def main():
             continue
         fils = fil_dict.get(date)
         #print('generating scene for: {}'.format(date.strftime('%Y-%m-%d')))
-        base = combine_files_and_save(fils, (pmin,pmax), overview=overview, base=base, date=date)
+        base = combine_files_and_save(fils, data, stackdatedict, (pmin,pmax), overview=overview, base=base, date=date)
 
-def combine_files_and_save(fil_paths, minmax, overview=None, base=None, date=None):
+def combine_files_and_save(fil_paths, data, stackdatedict, minmax, overview=None, base=None, date=None):
     '''apply the histogram matching and save the file'''
+    # get the stack info/dates
+    i = get_stack_i(stackdatedict, date)
+    
     pmin,pmax = minmax
     arrays = []
     for fil_path in fil_paths:
@@ -85,9 +101,16 @@ def combine_files_and_save(fil_paths, minmax, overview=None, base=None, date=Non
     #outfile = os.path.basename(fil_path).replace('warped.tif', 'matched.png')
     outpath = os.path.join(OUTFOLDER, outfile)
     base = np.ma.array(np.ma.filled(combined, fill_value=base)) # we're going to update the base with the current observation
-    save(base, outpath, (pmin,pmax), date=date, overview=overview)
+    save(base, outpath, (pmin,pmax), date=date, overview=overview, stackdata=data[i])
     #med = np.ma.array(np.ma.filled(arr, fill_value=med)) # we're going to update the median with the current image
     return (base - pmin) + pmin
+
+def get_stack_i(date_dict, date):
+    '''returns the i value of the stack that is closest to the given date'''
+    def diff(date1):
+        return abs(date1 - date)
+    mindate = min(date_dict.keys(), key=diff)
+    return date_dict[mindate]
 
 def efficient_mean(files):
     '''iterate through files to limit RAM usage'''
@@ -107,7 +130,7 @@ def get_corrections(stack, med):
         coeff.append(determine_coefficients(s, med))
     return coeff
 
-def save(arr, filename, clim, date=None, overview=None):
+def save(arr, filename, clim, date=None, overview=None, stackdata=None):
     y,x=arr.shape
     dpi=300
     figsize=(x/dpi, y/dpi)
@@ -117,11 +140,14 @@ def save(arr, filename, clim, date=None, overview=None):
     size = fig.get_size_inches()*fig.dpi # size of figure
     extent = 0, size[0], 0, size[1]
     im = ax.imshow(arr, cmap=cmap, clim=clim, extent=extent)
+    # add the velocity/stress/strain overlay
+    if not stackdata is None:
+        im2 = plt.imshow(stackdata, extent=extent, cmap='viridis', alpha=0.5)
     # add the date
     if date:
         plt.text(10,10, date.strftime('%Y-%m-%d'), color='white', backgroundcolor='black', font='serif', fontweight='bold', fontsize='medium')
     if not overview is None:
-        im2 = plt.imshow(overview, interpolation='nearest', extent=extent)
+        im3 = plt.imshow(overview, interpolation='nearest', extent=extent)
     ax.axis('off')
     #print('saving as {}'.format(filename))
     fig.savefig(filename, dpi=dpi, bbox_inches='tight', pad_inches=0.0, transparent=True, format='png', facecolor=(0.,0.,0.))

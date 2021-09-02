@@ -36,6 +36,15 @@ RUN pip3 install \
 #RUN python3 /hyp3-sdk/setup.py install 
 RUN pip3 install hyp3_sdk
 
+# clone and build iceutils repo and requirements
+ENV ICEUTILS=/iceutils
+RUN git clone https://github.com/bryanvriel/iceutils.git ${ICEUTILS}
+RUN pip3 install numpy scipy matplotlib h5py pyproj \
+    scikit-learn scikit-image tqdm pint pymp-pypi \
+    pint cvxopt xarray pylint pandas pillow \
+    netcdf4 setuptools===49.6.0 dask toolz opencv-python
+RUN python ${ICEUTILS}/setup.py install
+
 # copy current repo
 COPY ./ /hyp3_timeseries
 
