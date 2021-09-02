@@ -6,8 +6,8 @@ SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 CORRECTED_PATH='/products/corrected'
 CORRECTED_REGEX="*.corrected.vrt"
 WARPED_PATH='/products/warped'
-SHAPEFILE="${SCRIPT_DIR}/shapefiles/zoom.shp"
-#SHAPEFILE="${SCRIPT_DIR}/shapefiles/subset.shp"
+#SHAPEFILE="${SCRIPT_DIR}/shapefiles/zoom.shp"
+SHAPEFILE="${SCRIPT_DIR}/shapefiles/subset.shp"
 RESOLUTION=30
 PROJECTION="EPSG:3031"
 

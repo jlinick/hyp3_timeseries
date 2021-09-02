@@ -20,7 +20,7 @@ import iceutils as ice
 INFOLDER='/products/warped'
 OUTFOLDER='/products/matched'
 RANGE=[.5,99.5] # percentile range to scale output images
-OVERVIEW_PATH='/hyp3_timeseries/shapefiles/overview_zoom.png'
+OVERVIEW_PATH='/hyp3_timeseries/shapefiles/overview_gl.png'
 IN_REGEX=r'^S1[AB].*?_([0-9]{8}).*.warped.vrt$' # for dates
 BLACKLIST_DATES = ['2016-01-17', '2016-07-30', '2016-10-07', '2016-10-13', '2018-01-03'] # custom list for dates with poor/bad data
 #N=2 # how much to bin the images (N,N)
@@ -145,7 +145,9 @@ def save(arr, filename, clim, date=None, overview=None, stackdata=None):
         im2 = plt.imshow(stackdata, extent=extent, cmap='viridis', alpha=0.5)
     # add the date
     if date:
-        plt.text(10,10, date.strftime('%Y-%m-%d'), color='white', backgroundcolor='black', font='serif', fontweight='bold', fontsize='medium')
+        sze = y/200
+        plt.text(0.5,0.001, date.strftime('%Y-%m-%d'), color='white', backgroundcolor='black',
+                horizontalalignment='center', transform=ax.transAxes, font='serif', fontweight='bold', fontsize=sze)
     if not overview is None:
         im3 = plt.imshow(overview, interpolation='nearest', extent=extent)
     ax.axis('off')
