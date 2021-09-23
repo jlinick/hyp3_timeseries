@@ -3,14 +3,12 @@
 '''Submits job to ASF for RTC SLC and retrieves the data'''
 
 import time
+import argparse
 from datetime import datetime
 from hyp3_sdk import HyP3
 from hyp3_sdk import util
 import track
 
-
-
-t = track.track()
 
 def submit():
     hyp3 = HyP3(api_url='https://hyp3-api.asf.alaska.edu')
@@ -73,15 +71,22 @@ def print_ASF():
                    ' pending:   {}\n' \
                    ' failed:    {}'.format(len(suc), len(run), len(pend), len(fail)))
 
+def parser():
+    '''
+    Construct a parser to parse arguments, returns the parser
+    '''
+    parse = argparse.ArgumentParser(description="Generate time-series animation from input shapefile and time range")
+    parse.add_argument("--shapefile", required=True, default=False, help="input shapefile or kml file")
+    parse.add_argument("--start", required=False, default=False, help="start date")
+    parse.add_argument("--end", required=False, default=False, help="end date")
+    parse.add_argument("--relativeorbit", required=False, default=False, help="relative orbit")
+    return parse
+
 
 if __name__ == '__main__':
 
-    #t.print_status()
-    #print_ASF()
-    #just_download_available()
-    #t.print_status()
-    #print_ASF()
-
+    args = parser().parse_args()
+    t = track.track(args.shapefile, start_date=args.start, end_date=args.end, relativeorbit=args.relativeorbit)
     while not t.is_done():
         t.refresh()
         check_and_retrieve()

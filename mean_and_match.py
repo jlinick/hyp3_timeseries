@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-'''Generates a mean image across the stack, then does a dynamic histogram normalization. Outputs pngs'''
+'''Does not scale images in any way. Simply outputs pngs'''
 
 import os
 import re
@@ -18,43 +18,25 @@ from skimage.exposure import match_histograms
 
 INFOLDER='/products/warped'
 OUTFOLDER='/products/matched'
-RANGE=[.5,99.5] # percentile range to scale output images
-OVERVIEW_PATH='/hyp3_timeseries/shapefiles/overview_zoom.png'
+#RANGE=[.5,99.5] # percentile range to scale output images
+OVERVIEW_PATH='/hyp3_timeseries/shapefiles/overview.png'
 IN_REGEX=r'^S1[AB].*?_([0-9]{8}).*.warped.vrt$' # for dates
-BLACKLIST_DATES = ['2016-01-17', '2016-07-30', '2016-10-07', '2016-10-13', '2018-01-03'] # custom list for dates with poor/bad data
-#N=2 # how much to bin the images (N,N)
-#OUTPUT_DIR = '/output'
-#REMOVE='.temp'#'.merged'
+BLACKLIST_DATES = ['YYYY-MM-DD'] # custom list for dates with poor/bad data (will ignore these dates)
 
 def main():
     # get filenames matching regex & determine associated outfile names
     files = get_matching(INFOLDER)
-    
-    # load the rasters into a 3d numpy array, binning them by NxN (so they fit in memory & are more robust)
-    #print('loading {} files into stack and generating mean...'.format(len(files)))
-
-    #stack = np.ma.dstack([load_binned(fil) for fil in files]) # use binned if sizes are over RAM/swap
-    #stack = np.ma.dstack([load_gdal(fil) for fil in files])
-    # get the mean of the stack
-    #med = np.ma.mean(stack, axis=2) 
-    #med = efficient_mean(files)
-
-    #del stack # clear the binned stack from memory
-    #pmin, pmax = np.percentile(med, RANGE) # get values of percentiles
-    #print('min: {}, max: {}'.format(pmin, pmax)) 
+    # manual min/max bounds (CAN CHANGE THESE) 
     pmin=0
     pmax=0.75
     if not os.path.exists(OUTFOLDER):
         os.makedirs(OUTFOLDER)
-    #save(med, os.path.join(OUTFOLDER, 'median.png'), (pmin,pmax)) # save the median binned image
-    #save_gdal(med, os.path.join(OUTFOLDER, 'median.tif')) # save the median binned image
     
     # load overview (map legend, north arrow, shapefiles, etc)
     overview = None
     if os.path.exists(OVERVIEW_PATH):
         overview = plt.imread(OVERVIEW_PATH)
 
-    # apply the histogram normalization to each image
     print('applying corrections and saving files...')
     base = np.full_like(load_gdal(files[0]), fill_value=pmin)
     fil_dict = sort_into_dict(files)

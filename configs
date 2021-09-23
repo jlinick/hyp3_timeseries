@@ -1,0 +1,6 @@
+LOCAL_PRODUCT_DIR='/home/jlinick/products/hyp3_timeseries'
+SHAPEFILE_PATH='/home/jlinick/code/hyp3_timeseries/shapefiles/test.shp'
+START_DATE='2017-05-01'
+END_DATE='2017-05-15'
+RELATIVE_ORBIT=7
+RESOLUTION=30

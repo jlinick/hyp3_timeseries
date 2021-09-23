@@ -15,7 +15,7 @@ class group:
     def __init__(self):
         self.inpath = '/products/RTC'
         self.outpath = '/products/corrected'
-        self.t = track.track()
+        self.t = track.track(False)
         if not os.path.exists(self.outpath):
             os.makedirs(self.outpath)
 

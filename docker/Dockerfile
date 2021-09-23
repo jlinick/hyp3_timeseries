@@ -18,7 +18,7 @@ RUN apt-get update && apt-get install -y \
 RUN pip3 install \
     numpy scipy boto3 matplotlib h5py pyproj fiona \
     scikit-learn scikit-image tqdm pint pymp-pypi \
-    pint cvxopt xarray pylint pandas pillow \
+    pint cvxopt xarray pylint pandas pillow geopandas \
     netcdf4 setuptools===49.6.0 dask toolz opencv-python
 
 # install conda

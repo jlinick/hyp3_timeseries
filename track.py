@@ -8,7 +8,9 @@ import re
 import os
 import json
 import pickle
+import dateutil.parser
 import requests
+import geopandas
 
 ALLOWABLE=40 #number to allow on ASF's queue
 S1_REGEX='^S1.*_([a-zA-Z0-9]{4}).+?$'
@@ -22,12 +24,25 @@ class granule:
         return self.gid == other.gid
 
 class track:
-    def __init__(self):
+    def __init__(self, shapefile_path, start_date=False, end_date=False, relativeorbit=False):
+        self.output_dir = os.path.join('/products', 'RTC')
+        self.json_file = os.path.join(self.output_dir, 'asf-results.json')
+        if os.path.exists(self.json_file) and not shapefile_path == False:
+            os.remove(self.json_file) # remove any prior run
+        # set date/time and shapefile then refresh 
+        if not os.path.exists(shapefile_path):
+            raise Exception('shapefile path does not exist: {}'.format(shapefile_path))
+        self.shapefile_path = shapefile_path
+        self.start_date = start_date
+        self.end_date = end_date
+        self.relativeorbit = relativeorbit
+        if not start_date == False:
+            self.start_date = dateutil.parser.parse(start_date).strftime("%Y-%m-%dT%H:%M:%S")
+        if not end_date == False:
+            self.end_date = dateutil.parser.parse(end_date).strftime("%Y-%m-%dT%H:%M:%S")
         self.refresh() # loads/reloads all the lists
 
     def refresh(self):
-        self.output_dir = os.path.join('/products', 'RTC')
-        self.json_file = os.path.join(self.output_dir, 'asf-results.json')
         self.submitted_file = os.path.join(self.output_dir, 'submitted.pkl')
         self.submitted_granules = []
         if os.path.exists(self.submitted_file):
@@ -41,18 +56,31 @@ class track:
         # determine the files we have & correct submitted files
         self.find_local_files()
 
-    def query_asf(self):
+    def get_polygon(self):
+        '''gets the polygon from an input shapefiles'''
+        data = geopandas.read_file(self.shapefile_path)
+        data = data.to_crs(epsg=4326) # epsg used by ASF
+        coords = json.loads(data.exterior.to_json()).get('features',{})[0].get('geometry').get('coordinates')
+        cstring = ','.join(['{} {}'.format(a,b) for a,b in coords])
+        return 'polygon(({}))'.format(cstring)
 
-        #'&intersectsWith=point(-107.07 -75.52)' \
-        #'&intersectsWith=polygon((-103.670842344576 -74.4177148534973,-106.231146758566 -76.8020969230241,-114.223083850336 -76.0681200296965,-110.706357839052 -73.8378293132052,-103.670842344576 -74.4177148534973))' \
-        query = 'https://api.daac.asf.alaska.edu/services/search/param?' \
-                'platform=S1&polarization=HH' \
-                '&processingLevel=SLC' \
-                '&relativeOrbit=7' \
-                '&intersectsWith=point(-106.2082 -75.3699)' \
-                '&start=2015-01-01T00:00:00' \
-                '&end=2020-09-01T00:00:00' \
-                '&output=json'
+
+    def query_asf(self):
+        url = 'https://api.daac.asf.alaska.edu/services/search/param?'
+        params = []
+        # ADD YOUR QUERY PARAMETERS
+        params.append('platform=S1')
+        params.append('polarization=HH')
+        params.append('processingLevel=SLC')
+        params.append('intersectsWith={}'.format(self.get_polygon()))
+        if not self.relativeorbit == False:
+            params.append('relativeOrbit={}'.format(self.relativeorbit))
+        if not self.start_date == False:
+            params.append("start={}".format(self.start_date))
+        if not self.end_date == False:
+            params.append("end={}".format(self.end_date))
+        params.append('output=json')
+        query = url + '&'.join(params)
         print(query)
         if not os.path.exists(self.output_dir):
             os.makedirs(self.output_dir)
