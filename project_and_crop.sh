@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -x
+set -e
 # Projects and crops all files in the corrected directory
 
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
@@ -24,5 +26,5 @@ for file in ${files}; do
     warped_filename="${filebase}.warped.vrt"
     warped_filepath="${WARPED_PATH}/${warped_filename}"
     #convert them to same projection, generate a vrt with alpha layer, and merge all files together
-    gdalwarp -te ${BOUNDS} -overwrite -of VRT -tr ${RESOLUTION} ${RESOLUTION} -t_srs ${PROJECTION} -r near -multi "${file}" "${warped_filepath}" > /dev/null
+    gdalwarp -te ${BOUNDS} -overwrite -of VRT -tr ${RESOLUTION} ${RESOLUTION} -t_srs "${PROJECTION}" -r near -multi "${file}" "${warped_filepath}" > /dev/null
 done

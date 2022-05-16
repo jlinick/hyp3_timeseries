@@ -9,7 +9,7 @@ import geopandas
 
 def main(shapefile=False):
     if shapefile is False:
-        return
+        print('ERROR')
     if not os.path.exists(shapefile):
         return
     data = geopandas.read_file(shapefile)

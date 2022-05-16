@@ -15,7 +15,17 @@ class group:
     def __init__(self):
         self.inpath = '/products/RTC'
         self.outpath = '/products/corrected'
-        self.t = track.track(False)
+        
+        # create a track object
+        start = os.getenv('START_DATE')
+        end = os.getenv('END_DATE')
+        orbit = os.getenv('RELATIVE_ORBIT')
+        shapefile_path = os.getenv('SHAPEFILE_PATH')
+        shapefile_path = os.path.join('/data', os.path.basename(shapefile_path))
+        autorift = bool(int(os.getenv('AUTORIFT')))
+        print('autorift: {}'.format(autorift))
+        self.t = track.track(shapefile_path, start_date=start, end_date=end, relativeorbit=orbit, autorift=autorift)
+        #self.t = track.track(False)
         if not os.path.exists(self.outpath):
             os.makedirs(self.outpath)
 

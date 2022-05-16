@@ -31,6 +31,12 @@ RUN pip3 install \
 #clone SSARA
 #RUN git clone https://www.unavco.org/gitlab/unavco_public/ssara_client.git /SSARA
 
+# install iceutils
+#ENV ICEUTILS=/iceutils
+#RUN git clone https://github.com/bryanvriel/iceutils.git ${ICEUTILS}
+#RUN pip3 install ${ICEUTILS}/setup.cfg
+# python ${ICEUTILS}/setup.py install
+
 #ASF HYP3
 #RUN git clone https://github.com/ASFHyP3/hyp3-sdk.git /hyp3-sdk
 #RUN python3 /hyp3-sdk/setup.py install 
