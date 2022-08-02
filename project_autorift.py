@@ -24,7 +24,7 @@ files=$(find "${IN_PATH}" -name "${IN_REGEX}" -printf '%p ' | sort -u)
 echo "generating projected and cropped virtual files..."
 for file in ${files}; do
     filebase="$(basename ${file} | sed 's/.tif//g')"
-    out_filename="${filebase}.vrt"
+    out_filename="${filebase}.${RESOLUTION}.vrt"
     out_filepath="${OUT_PATH}/${out_filename}"
     #convert them to same projection, generate a vrt with alpha layer, and merge all files together
     gdalwarp -te ${BOUNDS} -overwrite -of VRT -tr ${RESOLUTION} ${RESOLUTION} -t_srs "${PROJECTION}" -r average -multi "${file}" "${out_filepath}" > /dev/null

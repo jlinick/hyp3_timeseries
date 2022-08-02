@@ -29,14 +29,14 @@ OUTFILE='thwaites.autorift.' + str(resolution) + '.{}.h5'
 
 
 DATE_REGEX=r'^S1AR_([0-9]{4}-[0-9]{2}-[0-9]{2})-([0-9]{4}-[0-9]{2}-[0-9]{2}).*.vrt$'
-VX_IN_REGEX=r'^S1AR_([0-9]{4}-[0-9]{2}-[0-9]{2})-([0-9]{4}-[0-9]{2}-[0-9]{2}).*.vx.vrt$'
-VY_IN_REGEX=r'^S1AR_([0-9]{4}-[0-9]{2}-[0-9]{2})-([0-9]{4}-[0-9]{2}-[0-9]{2}).*.vy.vrt$' 
-V_IN_REGEX=r'^S1AR_([0-9]{4}-[0-9]{2}-[0-9]{2})-([0-9]{4}-[0-9]{2}-[0-9]{2}).*.v.vrt$' 
-V_ERR_IN_REGEX=r'^S1AR_([0-9]{4}-[0-9]{2}-[0-9]{2})-([0-9]{4}-[0-9]{2}-[0-9]{2}).*.v_error.vrt$' 
+VX_IN_REGEX=r'^S1AR_([0-9]{4}-[0-9]{2}-[0-9]{2})-([0-9]{4}-[0-9]{2}-[0-9]{2}).vx.' + str(resolution) + r'.vrt$'
+VY_IN_REGEX=r'^S1AR_([0-9]{4}-[0-9]{2}-[0-9]{2})-([0-9]{4}-[0-9]{2}-[0-9]{2}).vy.' + str(resolution) + r'.vrt$' 
+V_IN_REGEX=r'^S1AR_([0-9]{4}-[0-9]{2}-[0-9]{2})-([0-9]{4}-[0-9]{2}-[0-9]{2}).v.' + str(resolution) + r'.vrt$' 
+V_ERR_IN_REGEX=r'^S1AR_([0-9]{4}-[0-9]{2}-[0-9]{2})-([0-9]{4}-[0-9]{2}-[0-9]{2}).v_error.' + str(resolution) + r'.vrt$' 
 
 BLACKLIST_DATES = [] # custom list for dates with poor/bad data (will ignore these dates)
 
-
+print(VX_IN_REGEX)
 def main(REGEX=V_IN_REGEX, NAME='v'):
     files = get_matching(INFOLDER, REGEX)
     if not os.path.exists(OUTFOLDER):
