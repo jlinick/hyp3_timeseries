@@ -1,7 +1,7 @@
 export LOCAL_PRODUCT_DIR='/home/jlinick/products/thwaites_timeseries'
-export SHAPEFILE_PATH='/home/jlinick/data/thwaites_timeseries/thwaites_outline.shp'
+export SHAPEFILE_PATH='/home/jlinick/data/thwaites_timeseries/thwaites_pointpoly_aoi.shp'
 export START_DATE='2015-01-01'
 export END_DATE='2022-05-14'
 export RELATIVE_ORBIT=7
-export RESOLUTION=30
-export AUTORIFT=0
+export RESOLUTION=90
+export AUTORIFT=1

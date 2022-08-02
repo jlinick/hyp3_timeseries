@@ -60,11 +60,13 @@ def check_ASF():
             print_job_info(obj.job)
             paths = ref.download_files(location='/products/RTC', create=True)
             obj.status = 'localized'
-            for path in paths:
-                util.extract_zipped_product(path, delete=True)
+            #for path in paths:
+            #    util.extract_zipped_product(path, delete=True)
+            t.localized(obj)
     failed = t.get_failed()
     for obj in failed:
-        print_job_info(obj.job[0])
+        print('failed job:')
+        print(obj.job)
     #    ref = hyp3.refresh(obj.job)[0]
     #    print('HYP3.REFRESH DATA:')
     #    print_job_info(ref)
@@ -153,10 +155,16 @@ if __name__ == '__main__':
     t = track.track(args.shapefile, start_date=args.start, end_date=args.end, relativeorbit=args.relativeorbit, autorift=args.autorift)
     t.print_status()
     submit()
-    check_ASF()
+    try:
+        check_ASF()
+    except:
+        pass
     t.print_status()
     while not t.is_done():
-        check_ASF()
+        try:
+            check_ASF()
+        except:
+            pass
         #t.print_status()
         submit()
         t.print_status()

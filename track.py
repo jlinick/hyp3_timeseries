@@ -14,8 +14,9 @@ import dateutil.parser
 import requests
 import geopandas
 
-ALLOWABLE=70 #number to allow on ASF's queue
+ALLOWABLE=100 #number to allow on ASF's queue
 S1_REGEX='^S1.*_([a-zA-Z0-9]{4}).+?$'
+S1_PAIR_REGEX='^(S1[AB]_IW_SLC.*?)(S1[AB]_IW_SLC.*).nc$'
 
 class granule:
     def __init__(self, name, gid, scenedate, status='unknown'):
@@ -27,7 +28,7 @@ class granule:
         self.object_type = 'granule'
 
     def __eq__(self, other):
-        return self.gid == other.gid
+        return type(self) == type(other) and self.gid == other.gid
     
     def __str__(self):
         return '{}'.format(self.name)
@@ -42,7 +43,7 @@ class granule_pair:
         self.object_type = 'granule_pair'
 
     def __eq__(self, other):
-        return self.primary == other.primary and self.secondary == other.secondary
+        return type(self) == type(other) and self.primary == other.primary and self.secondary == other.secondary
 
     def __str__(self):
         return '{}-{}'.format(self.primary.gid, self.secondary.gid)
@@ -83,11 +84,11 @@ class track:
         #self.refresh() # loads/reloads all the lists
         self.find_local_files()
 
-    def refresh(self):
-        #if os.path.exists(self.tracking_file):
-        #    self.load_pkl()
-        # determine the files we have & correct submitted files
-        self.find_local_files()
+    #def refresh(self):
+    #    #if os.path.exists(self.tracking_file):
+    #    #    self.load_pkl()
+    #    # determine the files we have & correct submitted files
+    #    self.find_local_files()
     
     def generate_pairs(self):
         '''determine all ordered pairs by going through self.all_granules. orders by date.'''
@@ -166,14 +167,15 @@ class track:
 
     def find_local_files(self):
         '''finds all the local files. if it finds any, it updates them to localized.'''
-        # should match all SLCs 
-        local_files = [f for f in os.listdir(self.output_dir) if re.match(S1_REGEX, f) and not f.endswith('.zip')]
+        # look for granules 
+        local_files = [f for f in os.listdir(self.output_dir) if re.match(S1_REGEX, f) and not f.endswith('.zip') and not f.endswith('.nc')]
         for fil in local_files:
             #name = self.get_name(gid)
-            name = self.get_original_name(fil) 
-            gid = re.search(S1_REGEX, name).group(1)
-            scenedate = self.parse_time_from_name(name)
-            gran = granule(name, gid, scenedate, status='localized')
+            #name = self.get_original_name(fil) 
+            #gid = re.search(S1_REGEX, name).group(1)
+            #scenedate = self.parse_time_from_name(name)
+            #gran = granule(name, gid, scenedate, status='localized')
+            gran = self.build_granule(fil, status='localized')
             if gran in self.all_granules:
                 self.all_granules.remove(gran)
                 self.all_granules.append(gran)
@@ -181,16 +183,52 @@ class track:
                 self.all_objects.remove(gran)
                 self.all_objects.append(gran)
         self.save_pkl()
-        # need to match all autorift jobs
+        # look for autorift jobs
+        local_files = [f for f in os.listdir(self.output_dir) if re.match(S1_REGEX, f) and f.endswith('.nc')]
+        for local_file in local_files:
+            print('found completed autorift product: {}'.format(local_file))
+            granule_pair = self.build_granule_pair(local_file, status='localized')
+            if not granule_pair is None:
+                print('found matching pair: {}'.format(granule_pair))
+                self.all_objects.remove(granule_pair)
+                self.all_objects.append(granule_pair)
+        self.save_pkl()
 
-    
+    def build_granule(self, filename, status='unknown'):
+        '''builds a granule object from a filename'''
+        name = self.get_original_name(filename)
+        gid = re.search(S1_REGEX, name).group(1)
+        scenedate = self.parse_time_from_name(name)
+        gran = granule(name, gid, scenedate, status=status)
+        return gran
+
+    def build_granule_pair(self, filename, status='unknown'):
+        '''builds a granule pair object from a given localized .nc file'''
+        if not re.match(S1_PAIR_REGEX, filename): 
+            return # the file does not match properly
+        primary = None
+        secondary = None
+        primary_str = re.search(S1_PAIR_REGEX, filename).group(1)
+        secondary_str = re.search(S1_PAIR_REGEX, filename).group(2)
+        # iterate through all_granules
+        for granule in self.all_granules:
+            if granule.name in primary_str:
+                primary = granule
+            if granule.name in secondary_str:
+                secondary = granule
+        if primary is None or secondary is None:
+            return # No matching granules found
+        return granule_pair(primary, secondary, status=status)
+
+
     def submit(self, objct, job_id=None):
         '''adds the granule to the submitted list and saves the pickle file'''
-        if objct in self.all_objects:
-            self.all_objects.remove(objct) # remove the old object
+        #if objct in self.all_objects:
+        #    self.all_objects.remove(objct) # remove the old object
         objct.status = 'submitted'
         if job_id:
             objct.job_id = job_id
+        self.all_objects.remove(objct)
         self.all_objects.append(objct)
         self.save_pkl()
 
@@ -204,6 +242,14 @@ class track:
         self.all_objects.append(objct)
         self.save_pkl()
 
+    def localized(self, objct):
+        '''sets the object as localized and saves the pickle file''' 
+        objct.status = 'localized'
+        if objct in self.all_objects:
+            self.all_objects.remove(objct) # remove the old object
+            self.all_objects.append(objct)
+        self.save_pkl()
+
     def save_pkl(self):
         pickle.dump(self.all_objects, open(self.tracking_file, 'wb'))
         time.sleep(1)
@@ -215,7 +261,7 @@ class track:
             for objct in objects:
                 if objct in self.all_objects:
                     self.all_objects.remove(objct)
-                self.all_objects.append(objct)
+                    self.all_objects.append(objct)
                 # this could conflate queries
                 if objct in self.all_granules:
                     self.all_granules.remove(objct)
